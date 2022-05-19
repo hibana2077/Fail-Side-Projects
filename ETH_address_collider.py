@@ -12,7 +12,7 @@ def createAddress():
   return private_key, acct.address
 
 #常數
-API_TOKEN='VGXRAJNESNEU5APUK8TB41INQMW4YGQDW2'
+API_TOKEN=''#your ETH explore API_TOKEN
 failcounter=0
 start=timer()
 while True:
@@ -27,3 +27,6 @@ while True:
         print(f"no money! this addres balance:{int(json.loads(requests.get(url).text)['result'])/(10**18)} timeusing:{timer()-start} fail counter:{failcounter}")
         sleep(1.1)
         start=timer()
+'''
+理論上可行，但是機率很低，猜對的機率是10的負72次方，運氣好就會有，不好的話一輩子也看不到他成功。
+'''
