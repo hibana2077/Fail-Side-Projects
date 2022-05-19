@@ -12,6 +12,7 @@ def createAddress():
   return private_key, acct.address
 
 #常數
+#https://etherscan.io/
 API_TOKEN=''#your ETH explore API_TOKEN
 failcounter=0
 start=timer()
