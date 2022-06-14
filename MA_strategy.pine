@@ -1,0 +1,161 @@
+// This source code is subject to the terms of the Mozilla Public License 2.0 at https://mozilla.org/MPL/2.0/
+// © Mustafaozver
+
+//@version=5
+strategy('I am speed', 'I am speed', overlay=true,pyramiding=0, default_qty_type=strategy.fixed,default_qty_value=1000, initial_capital=1000,currency=currency.USD, commission_value=0.05, commission_type=strategy.commission.percent, process_orders_on_close=true)
+//Inout
+year_IN=input.int(title="year_IN", defval=2022, minval=2018)
+month_IN=input.int(title="month_IN", defval=6, minval=1)
+day_IN=input.int(title="day_IN", defval=10, minval=1)
+hour_IN=input.int(title="hour_IN", defval=9, minval=1)
+mint=input.int(title="mint", defval=30, minval=1)
+profit=input.int(title="profit (PS.If profit is negative you can change this up.)", defval=20, minval=1)
+//trade
+////////////////////////////////////////////////////////////////////////////////INPUTS
+
+nATRPeriod = input(21, 'Period')
+nATRMultip = input.float(1.5, 'Multiplier', minval=0.5, maxval=1000, step=0.1)
+
+
+/////////////////////////////////////////////////////////////////////////////////Looking for best case (can not work;-;)
+bestcase() =>
+    result = matrix.new<float>(2,4,0.0)
+    for t = 1 to 999
+        profit:=t
+        for i=0.5 to 1000 by 0.1
+            nATRMultip=i
+            for j=5 to 60 by 1
+                nATRPeriod=j
+                xATR = ta.atr(nATRPeriod)
+                nLoss = nATRMultip * xATR
+                xATRTrailingStop = float(na)
+                iff_1 = close > nz(xATRTrailingStop[1], 0) ? close - nLoss : close + nLoss
+                iff_2 = close < nz(xATRTrailingStop[1], 0) and close[1] < nz(xATRTrailingStop[1], 0) ? math.min(nz(xATRTrailingStop[1]), close + nLoss) : iff_1
+                xATRTrailingStop := close > nz(xATRTrailingStop[1], 0) and close[1] > nz(xATRTrailingStop[1], 0) ? math.max(nz(xATRTrailingStop[1]), close - nLoss) : iff_2
+                
+                pos = int(na)
+                iff_3 = close[1] > nz(xATRTrailingStop[1], 0) and close < nz(xATRTrailingStop[1], 0) ? -1 : nz(pos[1], 0)
+                pos := close[1] < nz(xATRTrailingStop[1], 0) and close > nz(xATRTrailingStop[1], 0) ? 1 : iff_3
+                
+                color_1 = pos == -1 ? color.red : pos == 1 ? color.lime : color.blue
+                //patr=plot(xATRTrailingStop, color=color, linewidth=2, title="ATR Trailing Stop", transp=0)
+                
+                // Deternine if we are currently LONG
+                isLong = false
+                isLong := nz(isLong[1], false)
+                
+                // Determine if we are currently SHORT
+                isShort = false
+                isShort := nz(isShort[1], false)
+                
+                //Trading
+                // Buy only if the buy signal is triggered and we are not already long
+                LONG = not isLong and pos == 1
+                
+                
+                // Sell only if the sell signal is triggered and we are not already short   
+                SHORT = not isShort and pos == -1
+                
+                
+                if LONG
+                    isLong := true
+                    isShort := false
+                    isShort
+                
+                if SHORT
+                    isLong := false
+                    isShort := true
+                    isShort
+                
+                
+                
+                if not strategy.opentrades and time>timestamp(year_IN, month_IN, day_IN, hour_IN, mint)
+                    //buy
+                    if LONG
+                        strategy.order("long", strategy.long)
+                        strategy.exit("exit", "long", profit = profit)
+                    //sell
+                    if SHORT
+                        strategy.order("short", strategy.short)
+                        strategy.exit("exit", "short", profit = profit)
+                if (strategy.opentrades and strategy.opentrades.size(strategy.opentrades - 1)>0 and SHORT) or (strategy.opentrades and strategy.opentrades.size(strategy.opentrades - 1)<0 and LONG)
+                    strategy.close_all()
+                netprofit=strategy.netprofit
+                winrate=(strategy.wintrades/strategy.closedtrades)*100
+                maxprofit=matrix.get(result,0,3)
+                maxwinrate=matrix.get(result,1,3)
+                if (winrate > maxwinrate)
+                    matrix.set(result,0,0,nATRPeriod)
+                    matrix.set(result,0,1,nATRMultip)
+                    matrix.set(result,0,2,profit)
+                    matrix.set(result,0,3,winrate)
+                if (netprofit > maxprofit)
+                    matrix.set(result,1,0,nATRPeriod)
+                    matrix.set(result,1,1,nATRMultip)
+                    matrix.set(result,1,2,profit)
+                    matrix.set(result,1,3,netprofit)
+            
+        
+    result
+
+/////////////////////////////////////////////////////////////////////////////////ATR
+
+xATR = ta.atr(nATRPeriod)
+nLoss = nATRMultip * xATR
+xATRTrailingStop = float(na)
+iff_1 = close > nz(xATRTrailingStop[1], 0) ? close - nLoss : close + nLoss
+iff_2 = close < nz(xATRTrailingStop[1], 0) and close[1] < nz(xATRTrailingStop[1], 0) ? math.min(nz(xATRTrailingStop[1]), close + nLoss) : iff_1
+xATRTrailingStop := close > nz(xATRTrailingStop[1], 0) and close[1] > nz(xATRTrailingStop[1], 0) ? math.max(nz(xATRTrailingStop[1]), close - nLoss) : iff_2
+
+pos = int(na)
+iff_3 = close[1] > nz(xATRTrailingStop[1], 0) and close < nz(xATRTrailingStop[1], 0) ? -1 : nz(pos[1], 0)
+pos := close[1] < nz(xATRTrailingStop[1], 0) and close > nz(xATRTrailingStop[1], 0) ? 1 : iff_3
+
+color_1 = pos == -1 ? color.red : pos == 1 ? color.lime : color.blue
+//patr=plot(xATRTrailingStop, color=color, linewidth=2, title="ATR Trailing Stop", transp=0)
+
+// Deternine if we are currently LONG
+isLong = false
+isLong := nz(isLong[1], false)
+
+// Determine if we are currently SHORT
+isShort = false
+isShort := nz(isShort[1], false)
+
+//Trading
+// Buy only if the buy signal is triggered and we are not already long
+LONG = not isLong and pos == 1
+
+
+// Sell only if the sell signal is triggered and we are not already short   
+SHORT = not isShort and pos == -1
+
+
+if LONG
+    isLong := true
+    isShort := false
+    isShort
+
+if SHORT
+    isLong := false
+    isShort := true
+    isShort
+
+barcolor(isLong ? color.lime : isShort ? color.red : na)
+
+
+// Show Break Alerts
+plotshape(SHORT, title='Sell', style=shape.labeldown, location=location.abovebar, size=size.normal, text='Sell', textcolor=color.new(color.white, 0), color=color.new(color.red, 0))
+plotshape(LONG, title='Buy', style=shape.labelup, location=location.belowbar, size=size.normal, text='Buy', textcolor=color.new(color.white, 0), color=color.new(color.green, 0))
+
+if not strategy.opentrades and time>timestamp(year_IN, month_IN, day_IN, hour_IN, mint)
+    //buy
+    if LONG
+        strategy.order("long", strategy.long)
+        strategy.exit("exit", "long", profit = profit)
+    //sell
+    if SHORT
+        strategy.order("short", strategy.short)
+        strategy.exit("exit", "short", profit = profit)
+if (strategy.opentrades and strategy.opentrades.size(strategy.opentrades - 1)>0 and SHORT) or (strategy.opentrades and strategy.opentrades.size(strategy.opentrades - 1)<0 and LONG)
+    strategy.close_all()
